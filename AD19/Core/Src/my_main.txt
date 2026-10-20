@@ -1,0 +1,329 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2024 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
+#include "icache.h"
+#include "memorymap.h"
+#include "battery.h"
+#include "Lepton_Delay.h"
+#include "Lepton_Stm32_Control.h"
+#include "Lepton_Stm32_SPI_DMA.h"
+#include "Lepton_Common_Data.h"
+#include "Lepton_Stm32_I2C.h"
+#include "string.h"
+#include "bsp_ov2640.h"
+#include "bsp_gc2145.h"
+//#include "usbd_user.h"
+#include "app_usbx_device.h"
+
+#include "spi_flash.h"
+
+#include "sd_diskio.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+
+/* USER CODE BEGIN PV */
+
+/* USER CODE END PV */
+
+/* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+/* USER CODE BEGIN PFP */
+
+/* USER CODE END PFP */
+
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
+
+/* USER CODE END 0 */
+extern volatile uint8_t g_Infrared_Working_flag;
+
+
+static void _do_test(void)
+{
+    Battery_PowerOn();
+    HAL_Delay(500);
+
+    //spiflash_test();
+
+    spiflash_init();
+
+    // ff_test();
+
+//    usbd_user_init();
+//
+//    while(1)
+//    {
+//        HAL_Delay(1000);
+//    }
+
+    MX_USBX_Device_Init();
+    while (1)
+    {
+        ux_system_tasks_run();
+    }
+}
+
+
+extern uint16_t g_disp_buffer[320][240];
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
+int main(void)
+{
+
+    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+    HAL_Init();
+
+    // 系统时钟配置
+    SystemClock_Config();
+
+    SYSTEM_DelayInit(160);
+
+    Battery_GPIO_Init();
+
+    // _do_test();
+
+    /* Initialize all configured peripherals */
+    Lepton_IIC_Init();
+    // 初始化Lepton
+    Lepton_PwrRstPin_Init();
+
+    MX_ICACHE_Init();
+
+    //cst816t_test();
+
+    cst816t_init();
+    st7789_init();
+
+    st7789_clear_dma(0);
+    st7789_append_image(34, 100, 172, 78, (uint16_t *)&icon_logo_dark[0], (uint16_t *)&g_disp_buffer[0]);
+    st7789_draw_image_dma(0, 0, 240, 280, (const uint16_t *)&g_disp_buffer[0]);
+
+    //spiflash_init();
+
+    // 亮屏显示logo，再开电
+    Battery_PowerOn();
+
+    GC2145_Test();
+    GC2145_Init();
+    
+    Battery_ADC_Init();
+
+    // OV2640_Test();
+
+    while (Lepton_Init())
+    {
+        Error_Handler();
+    }
+    if (!LEPTON_SPI_DMA_Init())
+    {
+        Error_Handler();
+    }
+
+    // 等待Lepton启动成功，重要
+    Delay_Ms(1000);
+#if 1
+    // 校准，避免开机错误图像
+    Lepton_RunFFCCMD();
+
+    Delay_Ms(1000);
+    // Lepton_RunFFCCMD();
+    // Delay_Ms(1000);
+#endif
+    // 开始读取Lepton的数据
+    wTransferState = TRANSFER_COMPLETE;
+
+    /* usbx 初始化 */
+    //MX_USBX_Device_Init();
+
+    /* Infinite loop */
+    uint8_t str_temp[40];
+    uint8_t cnt_tmp[128];
+    uint8_t cnt = 0;
+
+
+
+    // Lepton_PowerOff();
+    /*PWDN引脚，高电平关闭电源，低电平供电*/
+    GC2145_PowerOff();
+    while (1)
+    {
+        // HAL_Delay(1000);
+        // cnt_tmp[cnt++] = CalFrameCnt;
+        // snprintf((char *)str_temp, sizeof(str_temp), "frame cnt: %d\r\n", CalFrameCnt);
+        // CalFrameCnt = 0;
+
+        // 关机检测
+        Battery_KeyScan_Task();
+
+        if (FrameOkay)
+        {
+        { 
+            FrameOkay = 0;
+            if (g_Infrared_Working_flag)
+            {
+#if defined(LEPTON_25)
+                memcpy((uint8_t *)g_Lepton_Process_Buffer, (uint8_t *)g_Lepton_Rec_Buffer, 60 * 80 * sizeof(uint16_t));
+#else
+                memcpy((uint8_t *)&g_Lepton_Buffer[0], (uint8_t *)&g_Lepton_Process_Buffer[0], (120 + 2) * (160) * sizeof(uint16_t));
+#endif
+                Lepton_Display();
+            }
+        }
+
+        OV2640_Display();
+
+        cst816t_process();
+        
+        // 电池电量检测
+        Battery_Battery_ADC_Task();
+
+        /* 处理 usbx 状态和任务 */
+        //ux_system_tasks_run();
+    }
+}
+
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+    RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+    RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+    /** Configure the main internal regulator output voltage
+    */
+    if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
+    {
+        Error_Handler();
+    }
+
+    /** Initializes the CPU, AHB and APB buses clocks
+    */
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE | RCC_OSCILLATORTYPE_HSI48;
+    RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
+    RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
+    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+    RCC_OscInitStruct.PLL.PLLMBOOST = RCC_PLLMBOOST_DIV1;
+    RCC_OscInitStruct.PLL.PLLM = 2;
+    RCC_OscInitStruct.PLL.PLLN = 40;
+    RCC_OscInitStruct.PLL.PLLP = 2;
+    RCC_OscInitStruct.PLL.PLLQ = 2;
+    RCC_OscInitStruct.PLL.PLLR = 1;
+    RCC_OscInitStruct.PLL.PLLRGE = RCC_PLLVCIRANGE_0;
+    RCC_OscInitStruct.PLL.PLLFRACN = 0;
+    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+    {
+        Error_Handler();
+    }
+
+    /** Initializes the CPU, AHB and APB buses clocks
+    */
+    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK
+        | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2
+        | RCC_CLOCKTYPE_PCLK3;
+    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+    RCC_ClkInitStruct.APB3CLKDivider = RCC_HCLK_DIV1;
+
+    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
+    {
+        Error_Handler();
+    }
+
+    if (160000000 != HAL_RCC_GetSysClockFreq())
+    {
+        while (1);
+    }
+
+}
+
+/* USER CODE BEGIN 4 */
+
+/* USER CODE END 4 */
+
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler(void)
+{
+    /* USER CODE BEGIN Error_Handler_Debug */
+    /* User can add his own implementation to report the HAL error return state */
+    __disable_irq();
+    while (1)
+    {
+        Delay_Ms(1000);
+    }
+    /* USER CODE END Error_Handler_Debug */
+}
+
+#ifdef  USE_FULL_ASSERT
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(uint8_t *file, uint32_t line)
+{
+    /* USER CODE BEGIN 6 */
+    /* User can add his own implementation to report the file name and line number,
+       ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+    /* USER CODE END 6 */
+}
+#endif /* USE_FULL_ASSERT */
+
+
+// ITM_SendChar说明
+//      这个函数位于 core_cm3.h（或cm4 cm7）中，直接调用即可。
+//  一般都使用 port0 无需修改
+int fputc(int ch, FILE *f)
+{
+    ITM_SendChar(ch);
+    return ch;
+}

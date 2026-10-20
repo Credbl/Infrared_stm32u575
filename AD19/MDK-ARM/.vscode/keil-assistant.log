@@ -1,0 +1,36 @@
+[info] Log at : 2024/12/17|17:04:08|GMT+0800
+
+[info] Log at : 2024/12/17|17:04:14|GMT+0800
+
+[info] Log at : 2024/12/17|17:09:09|GMT+0800
+
+[info] Log at : 2024/12/17|17:12:03|GMT+0800
+
+[SyntaxError: Unexpected token '/', ..."          // "d:\\0p"... is not valid JSON
+	at JSON.parse (<anonymous>)
+	at F.updateCppProperties (c:\Users\danlin\.vscode\extensions\cl.keil-assistant-1.7.0\dist\extension.js:1:10849)
+	at F.<anonymous> (c:\Users\danlin\.vscode\extensions\cl.keil-assistant-1.7.0\dist\extension.js:1:12579)
+	at Generator.next (<anonymous>)
+	at c:\Users\danlin\.vscode\extensions\cl.keil-assistant-1.7.0\dist\extension.js:1:4480
+	at new Promise (<anonymous>)
+	at r (c:\Users\danlin\.vscode\extensions\cl.keil-assistant-1.7.0\dist\extension.js:1:4225)
+	at F.load (c:\Users\danlin\.vscode\extensions\cl.keil-assistant-1.7.0\dist\extension.js:1:11310)
+	at w.<anonymous> (c:\Users\danlin\.vscode\extensions\cl.keil-assistant-1.7.0\dist\extension.js:1:8737)
+	at Generator.next (<anonymous>)
+	at a (c:\Users\danlin\.vscode\extensions\cl.keil-assistant-1.7.0\dist\extension.js:1:4282)]
+[info] Log at : 2024/12/17|17:27:41|GMT+0800
+
+[SyntaxError: Unexpected token '/', ..."          // "d:\\0p"... is not valid JSON
+	at JSON.parse (<anonymous>)
+	at F.updateCppProperties (c:\Users\danlin\.vscode\extensions\cl.keil-assistant-1.7.0\dist\extension.js:1:10849)
+	at F.<anonymous> (c:\Users\danlin\.vscode\extensions\cl.keil-assistant-1.7.0\dist\extension.js:1:12579)
+	at Generator.next (<anonymous>)
+	at c:\Users\danlin\.vscode\extensions\cl.keil-assistant-1.7.0\dist\extension.js:1:4480
+	at new Promise (<anonymous>)
+	at r (c:\Users\danlin\.vscode\extensions\cl.keil-assistant-1.7.0\dist\extension.js:1:4225)
+	at F.load (c:\Users\danlin\.vscode\extensions\cl.keil-assistant-1.7.0\dist\extension.js:1:11310)
+	at w.<anonymous> (c:\Users\danlin\.vscode\extensions\cl.keil-assistant-1.7.0\dist\extension.js:1:8737)
+	at Generator.next (<anonymous>)
+	at a (c:\Users\danlin\.vscode\extensions\cl.keil-assistant-1.7.0\dist\extension.js:1:4282)]
+[info] Log at : 2024/12/17|17:45:24|GMT+0800
+
